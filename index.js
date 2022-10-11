@@ -203,3 +203,191 @@ function addDepartment() {
       });
     });
 }
+
+// add a role to the database
+function addRole() {
+  db.query(`SELECT DISTINCT * FROM department`, (err, result) => {
+    if (err) throw err;
+    inquirer
+      .prompt([
+        {
+          name: "role",
+          type: "input",
+          message: "What is the title of the role you like to add?",
+        },
+        {
+          name: "salary",
+          type: "input",
+          message:
+            "What is the salary of the role? (must be a number and without separating with commas)",
+          validate: (input) => {
+            if (isNaN(input)) {
+              console.log("Please enter a number!");
+              return false;
+            } else {
+              return true;
+            }
+          },
+        },
+        {
+          name: "department",
+          type: "list",
+          message: "What department does the role belong to?",
+          choices: () => result.map((result) => result.name),
+        },
+      ])
+      .then(function (answers) {
+        const departmentID = result.filter(
+          (result) => result.name === answers.department
+        )[0].id;
+        db.query(
+          "ALTER TABLE role AUTO_INCREMENT = 1; INSERT INTO role SET ?",
+          {
+            title: answers.role,
+            salary: answers.salary,
+            department_id: departmentID,
+          },
+          function (err) {
+            if (err) throw err;
+            console.log(
+              answers.role +
+                " successfully add to roles under " +
+                answers.department
+            );
+            initPrompt();
+          }
+        );
+      });
+  });
+}
+
+//add an employee to the database
+function addEmployee() {
+  db.query(`SELECT DISTINCT title,id FROM role`, (err, role_result) => {
+    if (err) throw err;
+    db.query(
+      `SELECT DISTINCT CONCAT(e.first_name," ",e.last_name) AS manager_name,e.id
+        FROM employee
+        LEFT JOIN employee e
+        ON employee.manager_id = e.id
+        WHERE employee.manager_id IS NOT NULL`,
+      (err, manager_result) => {
+        if (err) throw err;
+        inquirer
+          .prompt([
+            {
+              name: "first_name",
+              type: "input",
+              message: "What is the employee's first name?",
+            },
+            {
+              name: "last_name",
+              type: "input",
+              message: "What is the employee's last name?",
+            },
+            {
+              name: "role",
+              type: "list",
+              message: "What is the employee's role?",
+              choices: () =>
+                role_result.map((role_result) => role_result.title),
+            },
+            {
+              name: "manager",
+              type: "list",
+              message: "Who is the employee's manager?",
+              choices: () =>
+                manager_result.map(
+                  (manager_result) => manager_result.manager_name
+                ),
+            },
+          ])
+          .then(function (answers) {
+            const managerID = manager_result.filter(
+              (manager_result) =>
+                manager_result.manager_name === answers.manager
+            )[0].id;
+            const roleID = role_result.filter(
+              (role_result) => role_result.title === answers.role
+            )[0].id;
+            db.query(
+              "ALTER TABLE employee AUTO_INCREMENT = 1; INSERT INTO employee SET ?",
+              {
+                first_name: answers.first_name,
+                last_name: answers.last_name,
+                role_id: roleID,
+                manager_id: managerID,
+              },
+              function (err) {
+                if (err) throw err;
+                console.log(
+                  answers.first_name +
+                    " " +
+                    answers.last_name +
+                    " is successfully added!"
+                );
+                initPrompt();
+              }
+            );
+          });
+      }
+    );
+  });
+}
+
+//update a role in the database
+function updateRole() {
+  db.query(`SELECT * FROM employee`, (err, employee_result) => {
+    if (err) throw err;
+    db.query(`SELECT * FROM role`, (err, role_result) => {
+      if (err) throw err;
+      inquirer
+        .prompt([
+          {
+            name: "employee",
+            type: "list",
+            message: "Which employee would you like to update?",
+            choices: () =>
+              employee_result.map(
+                (employee_result) =>
+                  employee_result.first_name + " " + employee_result.last_name
+              ),
+          },
+          {
+            name: "role",
+            type: "list",
+            message: "Which role do you want to assign the selected employee?",
+            choices: () => role_result.map((role_result) => role_result.title),
+          },
+        ])
+        .then((answers) => {
+          const roleID = role_result.filter(
+            (role_result) => role_result.title === answers.role
+          )[0].id;
+          const empID = employee_result.filter(
+            (employee_result) =>
+              employee_result.first_name + " " + employee_result.last_name ===
+              answers.employee
+          )[0].id;
+          db.query(
+            `UPDATE employee SET ? WHERE ?`,
+            [
+              {
+                role_id: roleID,
+              },
+              {
+                id: empID,
+              },
+            ],
+            function (err) {
+              if (err) throw err;
+              console.log(
+                answers.employee + "'s role is successfully updated!"
+              );
+              initPrompt();
+            }
+          );
+        });
+    });
+  });
+}
