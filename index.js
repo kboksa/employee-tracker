@@ -391,3 +391,111 @@ function updateRole() {
     });
   });
 }
+
+//Update employee managers in the database
+function updateEmpManager() {
+  db.query(`SELECT * FROM employee`, (err, employee_result) => {
+    if (err) throw err;
+    db.query(
+      `SELECT DISTINCT CONCAT(e.first_name," ",e.last_name) AS manager_name,e.id
+            FROM employee
+            LEFT JOIN employee e
+            ON employee.manager_id = e.id
+            WHERE employee.manager_id IS NOT NULL`,
+      (err, manager_result) => {
+        if (err) throw err;
+        inquirer
+          .prompt([
+            {
+              name: "employee",
+              type: "list",
+              message: "Which employee would you like to update?",
+              choices: () =>
+                employee_result.map(
+                  (employee_result) =>
+                    employee_result.first_name + " " + employee_result.last_name
+                ),
+            },
+            {
+              name: "manager",
+              type: "list",
+              message: "Who is this employee's new manager?",
+              choices: () =>
+                manager_result.map(
+                  (manager_result) => manager_result.manager_name
+                ),
+            },
+          ])
+          .then((answers) => {
+            const managerID = manager_result.filter(
+              (manager_result) =>
+                manager_result.manager_name === answers.manager
+            )[0].id;
+            const empID = employee_result.filter(
+              (employee_result) =>
+                employee_result.first_name + " " + employee_result.last_name ===
+                answers.employee
+            )[0].id;
+            db.query(
+              `UPDATE employee SET ? WHERE ?`,
+              [
+                {
+                  manager_id: managerID,
+                },
+                {
+                  id: empID,
+                },
+              ],
+              function (err) {
+                if (err) throw err;
+                console.log(
+                  answers.employee + "'s manager is successfully updated!"
+                );
+                initPrompt();
+              }
+            );
+          });
+      }
+    );
+  });
+}
+
+//view employees by manager
+function viewEmpByManager() {
+  db.query(
+    `SELECT DISTINCT CONCAT(e.first_name," ",e.last_name) AS manager_name
+    FROM employee
+    LEFT JOIN employee e
+    ON employee.manager_id = e.id
+    WHERE employee.manager_id IS NOT NULL`,
+    (err, result) => {
+      if (err) throw err;
+      inquirer
+        .prompt({
+          name: "manager",
+          type: "list",
+          message: "Which manager's team would you like to view?",
+          choices: () => result.map((result) => result.manager_name),
+        })
+        .then((answer) => {
+          db.query(
+            `SELECT employee.id,employee.first_name,employee.last_name,title,name AS department,salary
+            FROM employee
+            LEFT JOIN role
+            ON employee.role_id = role.id
+            LEFT JOIN department
+            ON role.department_id = department.id
+            LEFT JOIN employee e
+            ON employee.manager_id = e.id
+            WHERE CONCAT(e.first_name," ",e.last_name) = "${answer.manager}"
+            ORDER BY employee.role_id`,
+            (err, finalResult) => {
+              if (err) throw err;
+              console.table(answer.manager + "'s Team: ", finalResult);
+              initPrompt();
+            }
+          );
+        });
+    }
+  );
+}
