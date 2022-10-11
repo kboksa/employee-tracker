@@ -499,3 +499,164 @@ function viewEmpByManager() {
     }
   );
 }
+
+//View employees by department
+function viewEmpByDepartment() {
+  db.query(`SELECT DISTINCT name FROM department`, (err, result) => {
+    if (err) throw err;
+    inquirer
+      .prompt({
+        name: "department",
+        type: "list",
+        message: "Which department would you like to view?",
+        choices: () => result.map((result) => result.name),
+      })
+      .then((answer) => {
+        db.query(
+          `SELECT employee.id,employee.first_name,employee.last_name,title,name AS department,salary,
+              CONCAT(e.first_name," ",e.last_name) as manager
+              FROM employee
+              LEFT JOIN role
+              ON employee.role_id = role.id
+              LEFT JOIN department
+              ON role.department_id = department.id
+              LEFT JOIN employee e
+              ON employee.manager_id = e.id
+              WHERE name = "${answer.department}"
+              ORDER BY employee.role_id`,
+          (err, finalResult) => {
+            if (err) throw err;
+            console.table(
+              "Employees under " + answer.department + " Department: ",
+              finalResult
+            );
+            initPrompt();
+          }
+        );
+      });
+  });
+}
+
+//Delete departments
+function deleteDepartment() {
+  db.query("SELECT DISTINCT name FROM department", (err, result) => {
+    if (err) throw err;
+    inquirer
+      .prompt({
+        name: "department",
+        type: "list",
+        message: "Which department would you like to delete?",
+        choices: () => result.map((result) => result.name),
+      })
+      .then((answer) => {
+        db.query(
+          `SET FOREIGN_KEY_CHECKS=0;
+        DELETE FROM department WHERE ?`,
+          { name: answer.department },
+          (err, result) => {
+            if (err) throw err;
+            console.log(
+              "Successfully deleted the " + answer.department + " department."
+            );
+            initPrompt();
+          }
+        );
+      });
+  });
+}
+
+//Delete roles
+function deleteRole() {
+  db.query("SELECT DISTINCT title FROM role", (err, result) => {
+    if (err) throw err;
+    inquirer
+      .prompt({
+        name: "title",
+        type: "list",
+        message: "Which role would you like to delete?",
+        choices: () => result.map((result) => result.title),
+      })
+      .then((answer) => {
+        db.query(
+          `SET FOREIGN_KEY_CHECKS=0;
+          DELETE FROM role WHERE ?`,
+          { title: answer.title },
+          (err, result) => {
+            if (err) throw err;
+            console.log("Successfully deleted the " + answer.title + " role.");
+            initPrompt();
+          }
+        );
+      });
+  });
+}
+
+//Delete employees
+function deleteEmployee() {
+  db.query(
+    "SELECT DISTINCT CONCAT(first_name,' ',last_name) AS full_name FROM employee",
+    (err, result) => {
+      if (err) throw err;
+      inquirer
+        .prompt({
+          name: "full_name",
+          type: "list",
+          message: "Which employee would you like to delete?",
+          choices: () => result.map((result) => result.full_name),
+        })
+        .then((answer) => {
+          console.log(answer.full_name);
+          db.query(
+            `SET FOREIGN_KEY_CHECKS=0;
+          DELETE FROM employee WHERE CONCAT(first_name,' ',last_name) = "${answer.full_name}"`,
+
+            (err, result) => {
+              if (err) throw err;
+              console.log(
+                "Successfully deleted the employee named " +
+                  answer.full_name +
+                  "."
+              );
+              initPrompt();
+            }
+          );
+        });
+    }
+  );
+}
+
+//View the total utilized budget of a department
+function budgetUtilized() {
+  db.query(`SELECT DISTINCT name from department`, (err, result) => {
+    if (err) throw err;
+    inquirer
+      .prompt({
+        name: "department",
+        type: "list",
+        message: "Which department would you like to view?",
+        choices: () => result.map((result) => result.name),
+      })
+      .then((answer) => {
+        db.query(
+          `SELECT name AS department, SUM(salary) AS utilized_budget
+              FROM employee
+              LEFT JOIN role
+              ON employee.role_id = role.id
+              LEFT JOIN department
+              ON role.department_id = department.id
+              WHERE name = "${answer.department}"
+              GROUP BY name`,
+          (err, finalResult) => {
+            if (err) throw err;
+            console.table(
+              "The combined salaries of all employees in " +
+                answer.department +
+                " department is:",
+              finalResult
+            );
+            initPrompt();
+          }
+        );
+      });
+  });
+}
