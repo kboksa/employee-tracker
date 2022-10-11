@@ -135,3 +135,71 @@ function initPrompt() {
       }
     });
 }
+
+// view all departments in the database
+function viewDepartment() {
+  const sql = `SELECT * FROM department`;
+  db.query(sql, (err, result) => {
+    if (err) throw err;
+    console.table(result);
+    initPrompt();
+  });
+}
+
+//view all roles in the database
+function viewRole() {
+  const sql = `SELECT role.id,title, department.name AS department,salary
+      FROM role 
+      LEFT JOIN department 
+      ON role.department_id = department.id
+      ORDER BY role.id;`;
+  db.query(sql, (err, result) => {
+    if (err) throw err;
+    console.table(result);
+    initPrompt();
+  });
+}
+
+//view all employees in the database
+function viewEmployee() {
+  const sql = `SELECT employee.id,employee.first_name,employee.last_name,title,name AS department,salary,
+      CONCAT(e.first_name," ",e.last_name) AS manager
+      FROM employee
+      LEFT JOIN role
+      ON employee.role_id = role.id
+      LEFT JOIN department
+      ON role.department_id = department.id
+      LEFT JOIN employee e
+      ON employee.manager_id = e.id
+      ORDER BY employee.id;`;
+  db.query(sql, (err, result) => {
+    if (err) throw err;
+    console.table(result);
+    initPrompt();
+  });
+}
+
+// add a department to the database
+function addDepartment() {
+  inquirer
+    .prompt({
+      name: "newDepartment",
+      type: "input",
+      message: "Which department would you like to add?",
+    })
+    .then(function (answer) {
+      db.query(
+        `ALTER TABLE department AUTO_INCREMENT = 1; INSERT INTO department SET ?`,
+        {
+          name: answer.newDepartment,
+        }
+      );
+      const sql = "SELECT * FROM department";
+      db.query(sql, function (err, res) {
+        if (err) throw err;
+        console.log(answer.newDepartment + " has been added!");
+        console.table("All Departments:", res);
+        initPrompt();
+      });
+    });
+}
