@@ -1,3 +1,4 @@
+-- Active: 1664832326234@@127.0.0.1@3306@user_db
 -- As the image illustrates, your schema should contain the following three tables:
 DROP DATABASE IF EXISTS emptrack_db;
 CREATE DATABASE emptrack_db;
