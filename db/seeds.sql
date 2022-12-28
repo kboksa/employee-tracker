@@ -1,4 +1,4 @@
--- Active: 1671767264937@@127.0.0.1@3306@techblog_db
+-- Active: 1672195907899@@127.0.0.1@3306@techblog_db
 INSERT INTO department (name)
 VALUES ("Sales"),
        ("Engineering"),
